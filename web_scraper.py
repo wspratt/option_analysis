@@ -1,13 +1,22 @@
+from urllib import error
 from urllib import request
-import datetime
-import sys
 import pandas as pd
+import time
+
+def try_connect(url):
+    for i in range(5):
+        try:
+            resp = request.urlopen(url)
+            return resp
+        except error.HTTPError:
+            time.sleep(5)
+    return None
 
 def scrape_symbols():
 
     url = r'http://finance.yahoo.com/industries'
 
-    resp = request.urlopen(url)
+    resp = try_connect(url)
     text = resp.read().decode('utf-8')
 
     text = text.split('"name":"Industries"')[1]
@@ -30,7 +39,7 @@ def scrape_symbols():
     base_url = r'http://finance.yahoo.com/sector/'
     for i in range(len(industry_url)):
         url = base_url + industry_url[i]
-        resp = request.urlopen(url)
+        resp = try_connect(url)
         text = resp.read().decode('utf-8')
         stock_count = int(text.split('class="Mstart(15px) Fw(500) Fz(s) Mstart(0)--mobp Fl(start)--mobp"')[1].split('results')[0].split('of')[-1].strip())
         industry_count.append(stock_count)
