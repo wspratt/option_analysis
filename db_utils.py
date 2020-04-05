@@ -54,3 +54,17 @@ def insert_options(df_options, rec_date):
 
     conn.commit()
     conn.close()
+
+def get_symbol_list():
+
+    conn = pymysql.connect(host=MYSQL_HN, db=MYSQL_DB, user=MYSQL_UN, password=MYSQL_PW)
+    cur = conn.cursor()
+
+    symbol_list = []
+    cur.execute('select symbol from stock_symbols;')
+    for row in cur:
+        symbol_list.append(row[0])
+
+    conn.close()
+
+    return symbol_list
