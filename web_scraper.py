@@ -85,6 +85,8 @@ def scrape_options(symbol, rec_date):
     resp = try_connect(stock_url)
     text = resp.read().decode('utf-8')
 
+    if 'expirationDates":[' not in text:
+        return None
     exp_dates = text.split('expirationDates":[')[1].split(']')[0].split(',')
     if len(exp_dates) == 1 and exp_dates[0] == '':
         return None
