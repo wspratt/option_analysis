@@ -2,6 +2,7 @@ from urllib import error
 from urllib import request
 import pandas as pd
 import time
+import datetime
 
 def try_connect(url):
     for i in range(5):
@@ -11,6 +12,12 @@ def try_connect(url):
         except error.HTTPError:
             time.sleep(5)
     return None
+
+def str2date(string):
+    date1 = datetime.date(2018, 1, 1)
+    string1 = 1514782800
+
+    return date1 + datetime.timedelta(days=int((int(string) - string1)/(24*60*60)) + 1)
 
 def scrape_symbols():
 
@@ -71,3 +78,108 @@ def scrape_symbols():
 
     df_symbols = pd.DataFrame({'symbol': symbol_list, 'name': name_list, 'industry': industry_list})
     return df_symbols
+
+def scrape_options(symbol, rec_date):
+
+    stock_url = 'https://finance.yahoo.com/quote/' + symbol + '/options?p=' + symbol
+    resp = try_connect(stock_url)
+    text = resp.read().decode('utf-8')
+
+    exp_dates = text.split('expirationDates":[')[1].split(']')[0].split(',')
+    if len(exp_dates) == 1 and exp_dates[0] == '':
+        return None
+
+    contract_list = []
+    exp_list = []
+    type_list = []
+    strike_list = []
+    bid_list = []
+    ask_list = []
+    volume_list = []
+
+    for ed in exp_dates:
+        if (str2date(ed) - rec_date).days > 60:
+            continue
+
+        exp_url = stock_url + '&date=' + ed
+        resp = try_connect(exp_url)
+        text = resp.read().decode('utf-8')
+
+        if 'table class="calls' in text:
+            calls = text.split('table class="calls')[1].split('</tbody')[0].split('<tr')
+            calls.pop(0)
+            calls.pop(0)
+
+            for row in calls:
+                row_arr = row.split('<td')
+                contract = row_arr[1].split('</a')[0].split('"')[-1][1:]
+                strike = float(row_arr[3].split('</a')[0].split('>')[-1].replace(',',''))
+                try:
+                    bid = float(row_arr[5].split('</td')[0].split('>')[-1].replace(',',''))
+                except ValueError:
+                    bid = 'NULL'
+                try:
+                    ask = float(row_arr[6].split('</td')[0].split('>')[-1].replace(',',''))
+                except ValueError:
+                    ask = 'NULL'
+                try:
+                    volume = int(row_arr[9].split('</td>')[0].split('>')[-1].replace(',',''))
+                except ValueError:
+                    volume = 0
+
+                contract_list.append(contract)
+                exp_list.append(str2date(ed))
+                type_list.append(0)
+                strike_list.append(strike)
+                bid_list.append(bid)
+                ask_list.append(ask)
+                volume_list.append(volume)
+
+        if 'table class="puts' in text:
+            puts = text.split('table class="puts')[1].split('</tbody')[0].split('<tr')
+            puts.pop(0)
+            puts.pop(0)
+
+            for row in puts:
+                row_arr = row.split('<td')
+                contract = row_arr[1].split('</a')[0].split('"')[-1][1:]
+                strike = float(row_arr[3].split('</a')[0].split('>')[-1].replace(',',''))
+                try:
+                    bid = float(row_arr[5].split('</td')[0].split('>')[-1].replace(',',''))
+                except ValueError:
+                    bid = 'NULL'
+                try:
+                    ask = float(row_arr[6].split('</td')[0].split('>')[-1].replace(',',''))
+                except ValueError:
+                    ask = 'NULL'
+                try:
+                    volume = int(row_arr[9].split('</td>')[0].split('>')[-1].replace(',',''))
+                except ValueError:
+                    volume = 0
+
+                contract_list.append(contract)
+                exp_list.append(str2date(ed))
+                type_list.append(1)
+                strike_list.append(strike)
+                bid_list.append(bid)
+                ask_list.append(ask)
+                volume_list.append(volume)
+
+    df_options = pd.DataFrame({
+        'contract': contract_list,
+        'exp_date': exp_list,
+        'type': type_list,
+        'strike': strike_list,
+        'bid': bid_list,
+        'ask': ask_list,
+        'volume': volume_list
+        })
+
+    df_options['symbol'] = symbol
+    df_options['rec_date'] = rec_date
+
+    return df_options
+
+
+
+    
