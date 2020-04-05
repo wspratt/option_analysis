@@ -62,7 +62,7 @@ def scrape_symbols():
         page_iter = int(df_industry['count'].iloc[i]/100)
         for j in range(0, page_iter + 1):
             url = industry_url + '?offset=' + str(j*100) + '&count=100'
-            resp = request.urlopen(url)
+            resp = try_connect(url)
             text = resp.read().decode('utf-8')
             line_arr = text.split('fin-scr-res-table')[1].split('<tbody')[1].split('</tbody')[0].split('<tr')
             line_arr.pop(0)
