@@ -8,8 +8,9 @@ def try_connect(url):
     for i in range(5):
         try:
             resp = request.urlopen(url)
-            return resp
-        except error.HTTPError:
+            text = resp.read().decode('utf-8')
+            return text
+        except:
             time.sleep(1)
     return None
 
@@ -30,8 +31,7 @@ def scrape_symbols():
 
     url = r'http://finance.yahoo.com/industries'
 
-    resp = try_connect(url)
-    text = resp.read().decode('utf-8')
+    text = try_connect(url)
 
     text = text.split('"name":"Industries"')[1]
     line_arr = text.split('{')
@@ -53,8 +53,7 @@ def scrape_symbols():
     base_url = r'http://finance.yahoo.com/sector/'
     for i in range(len(industry_url)):
         url = base_url + industry_url[i]
-        resp = try_connect(url)
-        text = resp.read().decode('utf-8')
+        text = try_connect(url)
         stock_count = int(text.split('class="Mstart(15px) Fw(500) Fz(s) Mstart(0)--mobp Fl(start)--mobp"')[1].split('results')[0].split('of')[-1].strip())
         industry_count.append(stock_count)
 
@@ -69,8 +68,7 @@ def scrape_symbols():
         page_iter = int(df_industry['count'].iloc[i]/100)
         for j in range(0, page_iter + 1):
             url = industry_url + '?offset=' + str(j*100) + '&count=100'
-            resp = try_connect(url)
-            text = resp.read().decode('utf-8')
+            text = try_connect(url)
             line_arr = text.split('fin-scr-res-table')[1].split('<tbody')[1].split('</tbody')[0].split('<tr')
             line_arr.pop(0)
             for line in line_arr:
@@ -109,8 +107,7 @@ def try_exp_dates(args):
     symbol = args['symbol']
     rec_date = args['rec_date']
     stock_url = 'https://finance.yahoo.com/quote/' + symbol + '/options?p=' + symbol
-    resp = try_connect(stock_url)
-    text = resp.read().decode('utf-8')
+    text = try_connect(stock_url)
 
     if 'expirationDates":[' not in text:
         return pd.DataFrame({'exp_date': []})
@@ -141,8 +138,7 @@ def try_contracts(args):
     ed = date2str(exp_date)
 
     exp_url = 'https://finance.yahoo.com/quote/' + symbol + '/options?p=' + symbol + '&date=' + str(ed)
-    resp = try_connect(exp_url)
-    text = resp.read().decode('utf-8')
+    text = try_connect(exp_url)
 
     if 'table class="calls' in text:
         calls = text.split('table class="calls')[1].split('</tbody')[0].split('<tr')
