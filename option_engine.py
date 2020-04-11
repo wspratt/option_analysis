@@ -7,7 +7,7 @@ def tprint(msg):
     print('[' + str(datetime.datetime.now()) + '] ' + msg)
     sys.stdout.flush()
 
-rec_date = datetime.date(2020, 4, 3)
+rec_date = datetime.date(2020, 4, 9)
 
 tprint('starting download process for ' + rec_date.strftime('%Y-%m-%d') + '.')
 tprint('scraping symbols from industry list...')

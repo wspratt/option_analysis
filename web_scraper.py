@@ -10,7 +10,7 @@ def try_connect(url):
             resp = request.urlopen(url)
             return resp
         except error.HTTPError:
-            time.sleep(5)
+            time.sleep(1)
     return None
 
 def str2date(string):
@@ -18,6 +18,13 @@ def str2date(string):
     string1 = 1514782800
 
     return date1 + datetime.timedelta(days=int((int(string) - string1)/(24*60*60)) + 1)
+
+def date2str(date):
+    date1 = datetime.date(2018, 1, 1)
+    string1 = 1514764800
+
+    day_delta = int((date - date1).days)
+    return int(string1 + day_delta*24*60*60)
 
 def scrape_symbols():
 
@@ -79,17 +86,49 @@ def scrape_symbols():
     df_symbols = pd.DataFrame({'symbol': symbol_list, 'name': name_list, 'industry': industry_list})
     return df_symbols
 
-def scrape_options(symbol, rec_date):
+def brute_force(method, args, column):
 
+    df = method(args)
+    df_len = len(df.index)
+    n = 0
+    
+    while n < 2:
+        df_new = method(args)
+        df = pd.concat([df, df_new]).drop_duplicates(subset=column).reset_index(drop=True)
+        if df_len == len(df.index):
+            n = n + 1
+        else:
+            df_len = len(df.index)
+            n = 0
+
+    return df
+
+
+def try_exp_dates(args):
+
+    symbol = args['symbol']
+    rec_date = args['rec_date']
     stock_url = 'https://finance.yahoo.com/quote/' + symbol + '/options?p=' + symbol
     resp = try_connect(stock_url)
     text = resp.read().decode('utf-8')
 
     if 'expirationDates":[' not in text:
-        return None
+        return pd.DataFrame({'exp_date': []})
     exp_dates = text.split('expirationDates":[')[1].split(']')[0].split(',')
     if len(exp_dates) == 1 and exp_dates[0] == '':
-        return None
+        return pd.DataFrame({'exp_date': []})
+    df = pd.DataFrame({'exp_date': exp_dates})
+    df['exp_date'] = df['exp_date'].apply(lambda x: str2date(x))
+    df['exp_date'] = df['exp_date'][df['exp_date'] < rec_date + datetime.timedelta(days=60)]
+    df = df.dropna()
+    return df
+
+
+def try_contracts(args):
+
+    symbol = args['symbol']
+    exp_date = args['exp_date']
+    rec_date = args['rec_date']
 
     contract_list = []
     exp_list = []
@@ -99,73 +138,71 @@ def scrape_options(symbol, rec_date):
     ask_list = []
     volume_list = []
 
-    for ed in exp_dates:
-        if (str2date(ed) - rec_date).days > 60:
-            continue
+    ed = date2str(exp_date)
 
-        exp_url = stock_url + '&date=' + ed
-        resp = try_connect(exp_url)
-        text = resp.read().decode('utf-8')
+    exp_url = 'https://finance.yahoo.com/quote/' + symbol + '/options?p=' + symbol + '&date=' + str(ed)
+    resp = try_connect(exp_url)
+    text = resp.read().decode('utf-8')
 
-        if 'table class="calls' in text:
-            calls = text.split('table class="calls')[1].split('</tbody')[0].split('<tr')
-            calls.pop(0)
-            calls.pop(0)
+    if 'table class="calls' in text:
+        calls = text.split('table class="calls')[1].split('</tbody')[0].split('<tr')
+        calls.pop(0)
+        calls.pop(0)
 
-            for row in calls:
-                row_arr = row.split('<td')
-                contract = row_arr[1].split('</a')[0].split('"')[-1][1:]
-                strike = float(row_arr[3].split('</a')[0].split('>')[-1].replace(',',''))
-                try:
-                    bid = float(row_arr[5].split('</td')[0].split('>')[-1].replace(',',''))
-                except ValueError:
-                    bid = 'NULL'
-                try:
-                    ask = float(row_arr[6].split('</td')[0].split('>')[-1].replace(',',''))
-                except ValueError:
-                    ask = 'NULL'
-                try:
-                    volume = int(row_arr[9].split('</td>')[0].split('>')[-1].replace(',',''))
-                except ValueError:
-                    volume = 0
+        for row in calls:
+            row_arr = row.split('<td')
+            contract = row_arr[1].split('</a')[0].split('"')[-1][1:]
+            strike = float(row_arr[3].split('</a')[0].split('>')[-1].replace(',',''))
+            try:
+                bid = float(row_arr[5].split('</td')[0].split('>')[-1].replace(',',''))
+            except ValueError:
+                bid = 'NULL'
+            try:
+                ask = float(row_arr[6].split('</td')[0].split('>')[-1].replace(',',''))
+            except ValueError:
+                ask = 'NULL'
+            try:
+                volume = int(row_arr[9].split('</td>')[0].split('>')[-1].replace(',',''))
+            except ValueError:
+                volume = 0
 
-                contract_list.append(contract)
-                exp_list.append(str2date(ed))
-                type_list.append(0)
-                strike_list.append(strike)
-                bid_list.append(bid)
-                ask_list.append(ask)
-                volume_list.append(volume)
+            contract_list.append(contract)
+            exp_list.append(str2date(ed))
+            type_list.append(0)
+            strike_list.append(strike)
+            bid_list.append(bid)
+            ask_list.append(ask)
+            volume_list.append(volume)
 
-        if 'table class="puts' in text:
-            puts = text.split('table class="puts')[1].split('</tbody')[0].split('<tr')
-            puts.pop(0)
-            puts.pop(0)
+    if 'table class="puts' in text:
+        puts = text.split('table class="puts')[1].split('</tbody')[0].split('<tr')
+        puts.pop(0)
+        puts.pop(0)
 
-            for row in puts:
-                row_arr = row.split('<td')
-                contract = row_arr[1].split('</a')[0].split('"')[-1][1:]
-                strike = float(row_arr[3].split('</a')[0].split('>')[-1].replace(',',''))
-                try:
-                    bid = float(row_arr[5].split('</td')[0].split('>')[-1].replace(',',''))
-                except ValueError:
-                    bid = 'NULL'
-                try:
-                    ask = float(row_arr[6].split('</td')[0].split('>')[-1].replace(',',''))
-                except ValueError:
-                    ask = 'NULL'
-                try:
-                    volume = int(row_arr[9].split('</td>')[0].split('>')[-1].replace(',',''))
-                except ValueError:
-                    volume = 0
+        for row in puts:
+            row_arr = row.split('<td')
+            contract = row_arr[1].split('</a')[0].split('"')[-1][1:]
+            strike = float(row_arr[3].split('</a')[0].split('>')[-1].replace(',',''))
+            try:
+                bid = float(row_arr[5].split('</td')[0].split('>')[-1].replace(',',''))
+            except ValueError:
+                bid = 'NULL'
+            try:
+                ask = float(row_arr[6].split('</td')[0].split('>')[-1].replace(',',''))
+            except ValueError:
+                ask = 'NULL'
+            try:
+                volume = int(row_arr[9].split('</td>')[0].split('>')[-1].replace(',',''))
+            except ValueError:
+                volume = 0
 
-                contract_list.append(contract)
-                exp_list.append(str2date(ed))
-                type_list.append(1)
-                strike_list.append(strike)
-                bid_list.append(bid)
-                ask_list.append(ask)
-                volume_list.append(volume)
+            contract_list.append(contract)
+            exp_list.append(str2date(ed))
+            type_list.append(1)
+            strike_list.append(strike)
+            bid_list.append(bid)
+            ask_list.append(ask)
+            volume_list.append(volume)
 
     df_options = pd.DataFrame({
         'contract': contract_list,
@@ -182,6 +219,24 @@ def scrape_options(symbol, rec_date):
 
     return df_options
 
+def scrape_options(symbol, rec_date):
+
+    df_exp_dates = brute_force(try_exp_dates, {'symbol': symbol, 'rec_date': rec_date}, 'exp_date')
+
+    df_options = pd.DataFrame({
+        'contract': [],
+        'exp_date': [],
+        'type': [],
+        'strike': [],
+        'bid': [],
+        'ask': [],
+        'volume': []
+        })
 
 
-    
+    for i in range(len(df_exp_dates.index)):
+        df_contract = brute_force(try_contracts, {'symbol': symbol, 'exp_date': df_exp_dates['exp_date'].iloc[i], 'rec_date': rec_date}, 'contract')
+        df_options = pd.concat([df_options, df_contract]).drop_duplicates(subset='contract').reset_index(drop=True)
+
+    return df_options
+
