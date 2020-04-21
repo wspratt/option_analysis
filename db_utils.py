@@ -86,3 +86,24 @@ def get_unvalued_options():
 
     return pd.DataFrame({'symbol': symbol_list, 'rec_date': date_list})
     
+def insert_historical_data(symbol, df_close, df_div, df_ss):
+
+    conn = pymysql.connect(host=MYSQL_HN, db=MYSQL_DB, user=MYSQL_UN, password=MYSQL_PW)
+    cur = conn.cursor()
+
+    for i in range(len(df_close.index)):
+        cmd = 'insert into historical_data values("' + symbol + '","' + df_close['rec_date'].iloc[i].strftime('%Y-%m-%d') + '",' + str(df_close['close'].iloc[i]) + ');'
+        cur.execute(cmd)
+        conn.commit()
+
+    for i in range(len(df_div.index)):
+        cmd = 'insert into dividend_data values("' + symbol + '","' + df_div['rec_date'].iloc[i].strftime('%Y-%m-%d') + '",' + str(df_div['dividend'].iloc[i]) + ');'
+        cur.execute(cmd)
+        conn.commit()
+
+    for i in range(len(df_ss.index)):
+        cmd = 'insert into stocksplit_data values("' + symbol + '","' + df_ss['rec_date'].iloc[i].strftime('%Y-%m-%d') + '",' + str(df_ss['stocksplit'].iloc[i]) + ');'
+        cur.execute(cmd)
+        conn.commit()
+
+    conn.close()
