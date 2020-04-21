@@ -294,10 +294,10 @@ def scrape_historical_data(symbol, end_date, lookback):
             rec_date.append(d_date)
             close.append(d_close)
 
-            if d_date == start_date:
+            if d_date <= start_date:
                 break
 
-        if d_date == start_date:
+        if d_date <= start_date:
             break
 
         end_date = rec_date[-1]

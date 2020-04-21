@@ -7,10 +7,16 @@ MYSQL_DB = os.environ['MYSQL_DB']
 MYSQL_UN = os.environ['MYSQL_UN']
 MYSQL_PW = os.environ['MYSQL_PW']
 
-def resolve_symbols(df_scrape):
+def get_connection():
 
     conn = pymysql.connect(host=MYSQL_HN, db=MYSQL_DB, user=MYSQL_UN, password=MYSQL_PW)
     cur = conn.cursor()
+
+    return [conn, cur]
+
+def resolve_symbols(df_scrape):
+    
+    [conn, cur] = get_connection()
 
     symbol_list = []
     cur.execute('select symbol from stock_symbols;')
@@ -33,8 +39,7 @@ def resolve_symbols(df_scrape):
 
 def insert_options(df_options, rec_date):
 
-    conn = pymysql.connect(host=MYSQL_HN, db=MYSQL_DB, user=MYSQL_UN, password=MYSQL_PW)
-    cur = conn.cursor()
+    [conn, cur] = get_connection()
 
     rec_date = rec_date.strftime('%Y-%m-%d')
 
@@ -57,8 +62,7 @@ def insert_options(df_options, rec_date):
 
 def get_symbol_list():
 
-    conn = pymysql.connect(host=MYSQL_HN, db=MYSQL_DB, user=MYSQL_UN, password=MYSQL_PW)
-    cur = conn.cursor()
+    [conn, cur] = get_connection()
 
     symbol_list = []
     cur.execute('select symbol from stock_symbols;')
@@ -71,8 +75,7 @@ def get_symbol_list():
 
 def get_unvalued_options():
 
-    conn = pymysql.connect(host=MYSQL_HN, db=MYSQL_DB, user=MYSQL_UN, password=MYSQL_PW)
-    cur = conn.cursor()
+    [conn, cur] = get_connection()
 
     symbol_list = []
     date_list = []
@@ -88,8 +91,7 @@ def get_unvalued_options():
     
 def insert_historical_data(symbol, df_close, df_div, df_ss):
 
-    conn = pymysql.connect(host=MYSQL_HN, db=MYSQL_DB, user=MYSQL_UN, password=MYSQL_PW)
-    cur = conn.cursor()
+    [conn, cur] = get_connection()
 
     for i in range(len(df_close.index)):
         cmd = 'insert into historical_data values("' + symbol + '","' + df_close['rec_date'].iloc[i].strftime('%Y-%m-%d') + '",' + str(df_close['close'].iloc[i]) + ');'
@@ -110,8 +112,7 @@ def insert_historical_data(symbol, df_close, df_div, df_ss):
 
 def get_latest_historical_date(symbol):
 
-    conn = pymysql.connect(host=MYSQL_HN, db=MYSQL_DB, user=MYSQL_UN, password=MYSQL_PW)
-    cur = conn.cursor()
+    [conn, cur] = get_connection()
 
     qty = cur.execute('select rec_date from historical_data where symbol = "' + symbol + '" order by rec_date desc limit 0,1')
     if qty == 0:
@@ -119,3 +120,46 @@ def get_latest_historical_date(symbol):
 
     return cur.fetchone()[0]
 
+def get_historical_data(symbol, rec_date, lookback):
+
+    [conn, cur] = get_connection()
+
+    date_arr = []
+    close_arr = []
+
+    cmd = 'select rec_date, close from historical_data where symbol = "' + symbol + '" and rec_date <= "' + rec_date.strftime('%Y-%m-%d') + '" order by rec_date desc limit 0,' + str(lookback) + ';'
+    cur.execute(cmd)
+
+    for line in cur:
+        date_arr.append(line[0])
+        close_arr.append(line[1])
+
+    df_close = pd.DataFrame({'rec_date': date_arr, 'close': close_arr})
+
+    date_arr = []
+    div_arr = []
+
+    cmd = 'select rec_date, dividend from dividend_data where symbol = "' + symbol + '" and rec_date <= "' + rec_date.strftime('%Y-%m-%d') + '" and rec_date >= "' + df_close['rec_date'].iloc[-1].strftime('%Y-%m-%d') + '" order by rec_date desc;'
+    cur.execute(cmd)
+
+    for line in cur:
+        date_arr.append(line[0])
+        div_arr.append(line[1])
+
+    df_div = pd.DataFrame({'rec_date': date_arr, 'dividend': div_arr})
+
+    date_arr = []
+    ss_arr = []
+
+    cmd = 'select rec_date, stocksplit from stocksplit_data where symbol = "' + symbol + '" and rec_date <= "' + rec_date.strftime('%Y-%m-%d') + '" and rec_date >= "' + df_close['rec_date'].iloc[-1].strftime('%Y-%m-%d') + '" order by rec_date desc;'
+    cur.execute(cmd)
+
+    for line in cur:
+        date_arr.append(line[0])
+        ss_arr.append(line[1])
+
+    df_ss = pd.DataFrame({'rec_date': date_arr, 'stocksplit': ss_arr})
+
+    conn.close()
+
+    return [df_close, df_div, df_ss]
