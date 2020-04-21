@@ -279,7 +279,7 @@ def scrape_historical_data(symbol, end_date, lookback):
                 date_str = line.split('</span')[0].split('>')[-1]
                 d_date = datetime.datetime.fromtimestamp(time.mktime(time.strptime(date_str, '%b %d, %Y'))).date()
                 d_ss_arr = line.split('</strong')[0].split('>')[-1].split(':')
-                d_ss = float(d_ss_arr[0])/float(d_ss_arr[1])
+                d_ss = float(d_ss_arr[1])/float(d_ss_arr[0])
                 ss_date.append(d_date)
                 ss_val.append(d_ss)
                 continue

@@ -132,7 +132,7 @@ def get_historical_data(symbol, rec_date, lookback):
 
     for line in cur:
         date_arr.append(line[0])
-        close_arr.append(line[1])
+        close_arr.append(float(line[1]))
 
     df_close = pd.DataFrame({'rec_date': date_arr, 'close': close_arr})
 
@@ -144,7 +144,7 @@ def get_historical_data(symbol, rec_date, lookback):
 
     for line in cur:
         date_arr.append(line[0])
-        div_arr.append(line[1])
+        div_arr.append(float(line[1]))
 
     df_div = pd.DataFrame({'rec_date': date_arr, 'dividend': div_arr})
 
@@ -156,7 +156,7 @@ def get_historical_data(symbol, rec_date, lookback):
 
     for line in cur:
         date_arr.append(line[0])
-        ss_arr.append(line[1])
+        ss_arr.append(float(line[1]))
 
     df_ss = pd.DataFrame({'rec_date': date_arr, 'stocksplit': ss_arr})
 
