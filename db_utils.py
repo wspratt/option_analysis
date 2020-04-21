@@ -68,3 +68,21 @@ def get_symbol_list():
     conn.close()
 
     return symbol_list
+
+def get_unvalued_options():
+
+    conn = pymysql.connect(host=MYSQL_HN, db=MYSQL_DB, user=MYSQL_UN, password=MYSQL_PW)
+    cur = conn.cursor()
+
+    symbol_list = []
+    date_list = []
+
+    cur.execute('select distinct symbol, rec_date from option_data where est_val is null order by rec_date asc;')
+    for row in cur:
+        symbol_list.append(row[0])
+        date_list.append(row[1])
+
+    conn.close()
+
+    return pd.DataFrame({'symbol': symbol_list, 'rec_date': date_list})
+    

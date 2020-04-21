@@ -3,6 +3,7 @@ from urllib import request
 import pandas as pd
 import time
 import datetime
+import sys
 
 def try_connect(url):
     for i in range(5):
@@ -236,3 +237,74 @@ def scrape_options(symbol, rec_date):
 
     return df_options
 
+def scrape_historical_data(symbol, end_date, lookback):
+
+    end_date = end_date + datetime.timedelta(days=min(1, 5 - end_date.weekday()))
+
+    base_url = r'https://finance.yahoo.com/quote/' + symbol
+
+    rec_date = []
+    close = []
+
+    div_date = []
+    div_val = []
+
+    ss_date = []
+    ss_val = []
+
+    start_date = end_date + datetime.timedelta(days=-lookback)
+    start_date = start_date + datetime.timedelta(days=min(1, 5 - start_date.weekday()))
+
+    while True:
+
+        period2 = date2str(end_date)
+        temp_date = end_date + datetime.timedelta(days=-100)
+        period1 = date2str(temp_date)
+
+        target_url = base_url + '/history?period1=' + str(period1) + '&period2=' + str(period2)
+        text = try_connect(target_url)
+
+        line_arr = text.split('data-test="historical-prices"')[1].split('<tbody')[1].split('</tbody')[0].split('<tr')
+        line_arr.pop(0)
+
+        for line in line_arr:
+            if 'Dividend' in line:
+                date_str = line.split('</span')[0].split('>')[-1]
+                d_date = datetime.datetime.fromtimestamp(time.mktime(time.strptime(date_str, '%b %d, %Y'))).date()
+                d_div = float(line.split('</strong')[0].split('>')[-1])
+                div_date.append(d_date)
+                div_val.append(d_div)
+                continue
+            if 'Stock Split' in line:
+                date_str = line.split('</span')[0].split('>')[-1]
+                d_date = datetime.datetime.fromtimestamp(time.mktime(time.strptime(date_str, '%b %d, %Y'))).date()
+                d_ss_arr = line.split('</strong')[0].split('>')[-1].split(':')
+                d_ss = float(d_ss_arr[0])/float(d_ss_arr[1])
+                ss_date.append(d_date)
+                ss_val.append(d_ss)
+                continue
+            span_arr = []
+            for span in line.split('</span'):
+                data = span.split('>')[-1]
+                span_arr.append(data)
+
+            d_date = datetime.datetime.fromtimestamp(time.mktime(time.strptime(span_arr[0], '%b %d, %Y'))).date()
+            d_close = float(span_arr[4].replace(',',''))
+
+            rec_date.append(d_date)
+            close.append(d_close)
+
+            if d_date == start_date:
+                break
+
+        if d_date == start_date:
+            break
+
+        end_date = rec_date[-1]
+
+
+    df_close = pd.DataFrame({'rec_date': rec_date, 'close': close})
+    df_div = pd.DataFrame({'rec_date': div_date, 'dividend': div_val})
+    df_ss = pd.DataFrame({'rec_date': ss_date, 'stocksplit': ss_date})
+    
+    return df_close, df_div, df_ss
