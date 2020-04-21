@@ -107,3 +107,15 @@ def insert_historical_data(symbol, df_close, df_div, df_ss):
         conn.commit()
 
     conn.close()
+
+def get_latest_historical_date(symbol):
+
+    conn = pymysql.connect(host=MYSQL_HN, db=MYSQL_DB, user=MYSQL_UN, password=MYSQL_PW)
+    cur = conn.cursor()
+
+    qty = cur.execute('select rec_date from historical_data where symbol = "' + symbol + '" order by rec_date desc limit 0,1')
+    if qty == 0:
+        return None
+
+    return cur.fetchone()[0]
+
