@@ -163,3 +163,23 @@ def get_historical_data(symbol, rec_date, lookback):
     conn.close()
 
     return [df_close, df_div, df_ss]
+
+def insert_interest_rate(rec_date, interest):
+
+    [conn, cur] = get_connection()
+
+    cmd = 'insert into interest_data values ("' + rec_date.strftime('%Y-%m-%d') + '",' + str(interest) + ');'
+    cur.execute(cmd)
+    conn.commit()
+
+    conn.close()
+
+def get_interest_rate(rec_date):
+
+    [conn, cur] = get_connection()
+
+    cmd = 'select interest from interest_data where rec_date = "' + rec_date.strftime('%Y-%m-%d') + '";'
+    qty = cur.execute(cmd)
+    if qty == 0:
+        return None
+    return float(cur.fetchone()[0])

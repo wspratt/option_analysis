@@ -308,3 +308,32 @@ def scrape_historical_data(symbol, end_date, lookback):
     df_ss = pd.DataFrame({'rec_date': ss_date, 'stocksplit': ss_date})
     
     return df_close, df_div, df_ss
+
+def scrape_interest_rate(rec_date):
+
+    target_url = 'https://www.treasury.gov/resource-center/data-chart-center/interest-rates/Pages/TextView.aspx?data=yieldYear&year=' + str(rec_date.year)
+    text = try_connect(target_url)
+
+    target_str = rec_date.strftime('%m/%d/%y')
+    line_arr = text.split('<tr')
+
+    rates = []
+
+    for row in line_arr:
+        if target_str in row:
+            row_arr = row.split('</td')
+            for data in row_arr:
+                data = data.split('>')[-1]
+                if data == target_str or data.strip() == '':
+                    continue
+                try:
+                    rates.append(float(data))
+                except ValueError:
+                    rates.append(None)
+
+    for i in range(0, len(rates)):
+        if rates[i] is None:
+            del time_arr[i]
+
+    return max(rates[0:2])
+

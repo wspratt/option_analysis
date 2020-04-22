@@ -29,6 +29,16 @@ def ewma_vol(df_close):
 
     return volatility[0]
 
+def get_interest_rate(rec_date):
+
+    rate = db_utils.get_interest_rate(rec_date)
+
+    if rate is None:
+        rate = web_scraper.scrape_interest_rate(rec_date)
+        db_utils.insert_interest_rate(rec_date, rate)
+
+    return rate
+
 def calculate_volatility(symbol, rec_date):
 
     latest_date = db_utils.get_latest_historical_date(symbol)
