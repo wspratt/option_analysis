@@ -255,6 +255,8 @@ def scrape_historical_data(symbol, end_date, lookback):
     start_date = end_date + datetime.timedelta(days=-lookback)
     start_date = start_date + datetime.timedelta(days=min(1, 5 - start_date.weekday()))
 
+    data_count = 0
+
     while True:
 
         period2 = date2str(end_date)
@@ -279,7 +281,10 @@ def scrape_historical_data(symbol, end_date, lookback):
                 date_str = line.split('</span')[0].split('>')[-1]
                 d_date = datetime.datetime.fromtimestamp(time.mktime(time.strptime(date_str, '%b %d, %Y'))).date()
                 d_ss_arr = line.split('</strong')[0].split('>')[-1].split(':')
-                d_ss = float(d_ss_arr[1])/float(d_ss_arr[0])
+                try:
+                    d_ss = float(d_ss_arr[1])/float(d_ss_arr[0])
+                except ZeroDivisionError:
+                    return None
                 ss_date.append(d_date)
                 ss_val.append(d_ss)
                 continue
@@ -289,7 +294,10 @@ def scrape_historical_data(symbol, end_date, lookback):
                 span_arr.append(data)
 
             d_date = datetime.datetime.fromtimestamp(time.mktime(time.strptime(span_arr[0], '%b %d, %Y'))).date()
-            d_close = float(span_arr[4].replace(',',''))
+            try:
+                d_close = float(span_arr[4].replace(',',''))
+            except IndexError:
+                continue
 
             rec_date.append(d_date)
             close.append(d_close)
@@ -299,6 +307,11 @@ def scrape_historical_data(symbol, end_date, lookback):
 
         if d_date <= start_date:
             break
+
+        if len(close) == data_count:
+            return None
+        else:
+            data_count = len(close)
 
         end_date = rec_date[-1]
 
@@ -337,3 +350,16 @@ def scrape_interest_rate(rec_date):
 
     return max(rates[0:2])
 
+def scrape_dividend(symbol):
+
+    target_url = 'https://finance.yahoo.com/quote/' + symbol + '?p=' + symbol
+    text = try_connect(target_url)
+
+    try:
+        dividend = float(text.split('DIVIDEND_AND_YIELD-value')[1].split('<')[0].split('>')[-1].split()[0])
+    except ValueError:
+        return None
+    date_str = text.split('Ex-Dividend Date')[1].split('</td>')[1].split('>')[2].split('<')[0]
+    rec_date = datetime.datetime.fromtimestamp(time.mktime(time.strptime(date_str, '%b %d, %Y'))).date()
+    df_div = pd.DataFrame({'rec_date': [rec_date], 'dividend': [dividend]})
+    return df_div

@@ -95,18 +95,27 @@ def insert_historical_data(symbol, df_close, df_div, df_ss):
 
     for i in range(len(df_close.index)):
         cmd = 'insert into historical_data values("' + symbol + '","' + df_close['rec_date'].iloc[i].strftime('%Y-%m-%d') + '",' + str(df_close['close'].iloc[i]) + ');'
-        cur.execute(cmd)
-        conn.commit()
+        try:
+            cur.execute(cmd)
+            conn.commit()
+        except:
+            print(cmd)
 
     for i in range(len(df_div.index)):
         cmd = 'insert into dividend_data values("' + symbol + '","' + df_div['rec_date'].iloc[i].strftime('%Y-%m-%d') + '",' + str(df_div['dividend'].iloc[i]) + ');'
-        cur.execute(cmd)
-        conn.commit()
+        try:
+            cur.execute(cmd)
+            conn.commit()
+        except:
+            print(cmd)
 
     for i in range(len(df_ss.index)):
         cmd = 'insert into stocksplit_data values("' + symbol + '","' + df_ss['rec_date'].iloc[i].strftime('%Y-%m-%d') + '",' + str(df_ss['stocksplit'].iloc[i]) + ');'
-        cur.execute(cmd)
-        conn.commit()
+        try:
+            cur.execute(cmd)
+            conn.commit()
+        except:
+            print(cmd)
 
     conn.close()
 
@@ -183,3 +192,4 @@ def get_interest_rate(rec_date):
     if qty == 0:
         return None
     return float(cur.fetchone()[0])
+
