@@ -69,6 +69,19 @@ def calculate_volatility(symbol, rec_date):
     df_close = calculate_adjusted_close(df_close, df_div, df_ss)
     return ewma_vol(df_close)
 
+def get_volatility(symbol, rec_date):
+
+    vol = db_utils.get_volatility(symbol, rec_date)
+    if vol is None:
+        vol = calculate_volatility(symbol, rec_date)
+        if vol is not None:
+            vol = float(vol)
+            db_utils.insert_volatility(symbol, rec_date, vol)
+    else:
+        vol = float(vol)
+        
+    return vol
+
 def predict_next_dividend(symbol, rec_date):
 
 #    print('attempting to predict next dividend for ' + symbol + ' starting from ' + rec_date.strftime('%Y-%m-%d'))
@@ -138,3 +151,75 @@ def predict_next_dividend(symbol, rec_date):
 #                input()
                 df_div = pd.DataFrame({'rec_date': [next_expected_date], 'dividend': [next_expected_dividend]})
                 return df_div
+
+def compute_option(o_type, stock, strike, vol, r, T, div, div_T, steps):
+
+    dt = T/steps
+
+    u = numpy.exp(vol*numpy.sqrt(dt))
+    d = numpy.exp(-vol*numpy.sqrt(dt))
+    a = numpy.exp(r*dt)
+    p = ((a - d)/(u - d))
+
+    div_disc = []
+    for i in range(0, steps + 1):
+        if i*dt < div_T:
+            div_disc.append(round(div*numpy.exp(-r*(div_T - i*dt)),2))
+        else:
+            div_disc.append(0)
+
+    S = [[stock]]
+    D = [[stock + div_disc[0]]]
+    V = [[0]]
+
+    for i in range(1, steps + 1):
+        new_row = []
+        new_dis = []
+        new_val = []
+        for j in range(0, i+1):
+            new_row.append(round(stock*(u**j)*(d**(i-j)),2))
+            new_dis.append(round(new_row[-1] + div_disc[i], 2))
+            new_val.append(0)
+        S.append(new_row)
+        D.append(new_dis)
+        V.append(new_val)
+
+    for i in range(0, len(S[-1])):
+        if o_type == 0:
+            V[-1][i] = round(max(D[-1][i] - strike, 0), 2)
+        elif o_type == 1:
+            V[-1][i] = round(max(strike - D[-1][i], 0), 2)
+
+    for i in range(len(S) - 2, -1, -1):
+        for j in range(0, i + 1):
+            if o_type == 0:
+                V[i][j] = round(max(D[i][j] - strike, (p*V[i+1][j+1]+(1-p)*V[i+1][j])*numpy.exp(-r*dt)),2)
+            elif o_type == 1:
+                V[i][j] = round(max(strike - D[i][j], (p*V[i+1][j+1]+(1-p)*V[i+1][j])*numpy.exp(-r*dt)),2)
+
+    return V[0][0]
+
+def eval_option(o_type, stock, strike, vol, r, rec_date, exp_date, div_val, div_date):
+
+    T = (exp_date - rec_date).days/365.0
+
+    div_T = 0.0
+    if div_date is not None:
+        div_T = (div_date - rec_date).days/365.0
+
+    if div_val is None:
+        div_val = 0.0
+
+    steps = 30
+    fval = compute_option(o_type, stock, strike, vol, r, T, div_val, div_T, steps)
+    
+    while True:
+        fval_next = compute_option(o_type, stock, strike, vol, r, T, div_val, div_T, steps + 1)
+        if fval_next == fval:
+            break
+        fval = fval_next
+        steps = steps + 1
+
+    return fval
+
+

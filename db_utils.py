@@ -193,3 +193,48 @@ def get_interest_rate(rec_date):
         return None
     return float(cur.fetchone()[0])
 
+def get_option_restart_point():
+
+    [conn, cur] = get_connection()
+
+    cmd = 'select distinct rec_date from option_data order by rec_date desc limit 0,1;'
+    cur.execute(cmd)
+    rec_date = cur.fetchone()[0]
+
+    cmd = 'select distinct symbol from option_data where rec_date = "' + rec_date.strftime('%Y-%m-%d') + '" order by symbol desc limit 0,1;'
+    cur.execute(cmd)
+    symbol = cur.fetchone()[0]
+
+    symbol_list = []
+    cmd = 'select symbol from stock_symbols where symbol > "' + symbol + '";'
+    cur.execute(cmd)
+    for row in cur:
+        symbol_list.append(row[0])
+
+    conn.close()
+    return rec_date, symbol_list
+
+def insert_volatility(symbol, rec_date, vol):
+
+    [conn, cur] = get_connection()
+
+    cmd = 'insert into vol_data values ("' + symbol + '","' + rec_date.strftime("%Y-%m-%d") + '",' + str(vol) + ');'
+    cur.execute(cmd)
+    conn.commit()
+
+    conn.close()
+
+def get_volatility(symbol, rec_date):
+
+    [conn, cur] = get_connection()
+
+    cmd = 'select volatility from vol_data where symbol = "' + symbol + '" and rec_date = "' + rec_date.strftime('%Y-%m-%d') + '";'
+    qty = cur.execute(cmd)
+
+    conn.close()
+
+    if qty < 1:
+        return None
+    else:
+        return cur.fetchone()[0]
+

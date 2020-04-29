@@ -7,18 +7,31 @@ def tprint(msg):
     print('[' + str(datetime.datetime.now()) + '] ' + msg)
     sys.stdout.flush()
 
-rec_date = datetime.datetime.today().date()
+restart = False
 
-tprint('starting download process for ' + rec_date.strftime('%Y-%m-%d') + '.')
-tprint('scraping symbols from industry list...')
+if len(sys.argv) == 2:
+    if sys.argv[1] == 'restart':
+        restart = True
 
-df_scrape = web_scraper.scrape_symbols()
-new_count = str(db_utils.resolve_symbols(df_scrape))
+if restart is False:
 
-tprint(new_count + ' new symbol(s) added to database to track.')
+    rec_date = datetime.datetime.today().date()
 
-tprint('beginning option download...')
-df_symbols = db_utils.get_symbol_list()
+    tprint('starting download process for ' + rec_date.strftime('%Y-%m-%d') + '.')
+    tprint('scraping symbols from industry list...')
+
+    df_scrape = web_scraper.scrape_symbols()
+    new_count = str(db_utils.resolve_symbols(df_scrape))
+
+    tprint(new_count + ' new symbol(s) added to database to track.')
+
+    tprint('beginning option download...')
+    df_symbols = db_utils.get_symbol_list()
+
+elif restart is True:
+
+    [rec_date, df_symbols] = db_utils.get_option_restart_point()
+    tprint('restarting option download at symbol ' + df_symbols[0])
 
 for i in range(len(df_symbols)):
     df_options = web_scraper.scrape_options(df_symbols[i], rec_date)    
