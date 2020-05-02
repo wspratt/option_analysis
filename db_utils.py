@@ -270,7 +270,9 @@ def get_volatility(symbol, rec_date):
         return cur.fetchone()[0]
 
 def get_generic_df(columns, command_tail):
-    
+
+    columns = columns.split(',')
+
     column_map = {}
 
     for c in columns:
