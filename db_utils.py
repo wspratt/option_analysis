@@ -60,6 +60,17 @@ def insert_options(df_options, rec_date):
     conn.commit()
     conn.close()
 
+def insert_valued_options(df_options, rec_date):
+
+    [conn, cur] = get_connection()
+
+    for i in range(len(df_options.index)):
+        cmd = 'update option_data set est_val = ' + str(df_options['est_val'].iloc[i]) + ' where contract = "' + df_options['contract'].iloc[i] + '" and rec_date = "' + rec_date.strftime('%Y-%m-%d') + '";'
+        cur.execute(cmd)
+        conn.commit()
+
+    conn.close()
+
 def get_symbol_list():
 
     [conn, cur] = get_connection()
@@ -80,7 +91,7 @@ def get_unvalued_options():
     symbol_list = []
     date_list = []
 
-    cur.execute('select distinct symbol, rec_date from option_data where est_val is null order by rec_date asc;')
+    cur.execute('select distinct symbol, rec_date from option_data where est_val is null order by rec_date desc;')
     for row in cur:
         symbol_list.append(row[0])
         date_list.append(row[1])
@@ -88,6 +99,26 @@ def get_unvalued_options():
     conn.close()
 
     return pd.DataFrame({'symbol': symbol_list, 'rec_date': date_list})
+
+def get_unvalued_contracts(symbol, rec_date):
+
+    [conn, cur] = get_connection()
+
+    contract_list = []
+    strike_list = []
+    type_list = []
+    exp_date_list = []
+
+    cmd = 'select contract, strike, type, exp_date from option_data where symbol = "' + symbol + '" and rec_date = "' + rec_date.strftime('%Y-%m-%d') + '";'
+    cur.execute(cmd)
+    for row in cur:
+        contract_list.append(row[0])
+        strike_list.append(row[1])
+        type_list.append(row[2])
+        exp_date_list.append(row[3])
+
+    df_options = pd.DataFrame({'contract': contract_list, 'strike': strike_list, 'type': type_list, 'exp_date': exp_date_list})
+    return df_options
     
 def insert_historical_data(symbol, df_close, df_div, df_ss):
 

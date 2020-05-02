@@ -207,19 +207,48 @@ def eval_option(o_type, stock, strike, vol, r, rec_date, exp_date, div_val, div_
     if div_date is not None:
         div_T = (div_date - rec_date).days/365.0
 
+    if div_T > T:
+        div_T = 0.0
+        div_val = None
+
     if div_val is None:
         div_val = 0.0
 
     steps = 30
     fval = compute_option(o_type, stock, strike, vol, r, T, div_val, div_T, steps)
-    
-    while True:
-        fval_next = compute_option(o_type, stock, strike, vol, r, T, div_val, div_T, steps + 1)
-        if fval_next == fval:
-            break
-        fval = fval_next
-        steps = steps + 1
-
     return fval
+    
+#    while True:
+#        fval_next = compute_option(o_type, stock, strike, vol, r, T, div_val, div_T, steps + 1)
+#        if fval_next == fval:
+#            break
+#        fval = fval_next
+#        steps = steps + 1
+
+#    return fval
+
+def bulk_eval_options(symbol, rec_date):
+
+    df_options = db_utils.get_unvalued_contracts(symbol, rec_date)
+    vol = get_volatility(symbol, rec_date)
+    [df_close, df_div, df_ss] = db_utils.get_historical_data(symbol, rec_date, 1)
+    stock = df_close['close'].iloc[0]
+    r = get_interest_rate(rec_date)
+    df_div = predict_next_dividend(symbol, rec_date)
+    if df_div is None:
+        div_val = None
+        div_date = None
+    else:
+        div_val = df_div['dividend'].iloc[0]
+        div_date = df_div['rec_date'].iloc[0]
+
+    val_list = []
+    for i in range(len(df_options.index)):
+        val_list.append(eval_option(int(df_options['type'].iloc[i]), float(stock), float(df_options['strike'].iloc[i]), float(vol), float(r), rec_date, df_options['exp_date'].iloc[i], div_val, div_date))
+
+    df_options['est_val'] = val_list
+
+    return df_options
+
 
 
