@@ -269,3 +269,22 @@ def get_volatility(symbol, rec_date):
     else:
         return cur.fetchone()[0]
 
+def get_generic_df(columns, command_tail):
+    
+    column_map = {}
+
+    for c in columns:
+        column_map[c] = []
+
+    [conn, cur] = get_connection()
+
+    cmd = 'select ' + ','.join(columns) + ' ' + command_tail
+    cur.execute(cmd)
+
+    for row in cur:
+        for i in range(len(columns)):
+            column_map[columns[i]].append(row[i])
+
+    conn.close()
+
+    return pd.DataFrame(column_map)

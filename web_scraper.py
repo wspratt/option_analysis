@@ -109,6 +109,8 @@ def try_exp_dates(args):
     rec_date = args['rec_date']
     stock_url = 'https://finance.yahoo.com/quote/' + symbol + '/options?p=' + symbol
     text = try_connect(stock_url)
+    if text is None:
+        return None
 
     if 'expirationDates":[' not in text:
         return pd.DataFrame({'exp_date': []})
@@ -219,6 +221,8 @@ def try_contracts(args):
 def scrape_options(symbol, rec_date):
 
     df_exp_dates = brute_force(try_exp_dates, {'symbol': symbol, 'rec_date': rec_date}, 'exp_date')
+    if df_exp_dates is None:
+        return None
 
     df_options = pd.DataFrame({
         'contract': [],
