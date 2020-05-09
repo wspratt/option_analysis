@@ -250,5 +250,31 @@ def bulk_eval_options(symbol, rec_date):
 
     return df_options
 
+def get_pareto_set(rec_date, volume_min=1000, ask_max=100, day_min=30, ret_max=100):
 
+    min_exp = rec_date + datetime.timedelta(days=day_min)
+    df_options = db_utils.get_generic_df('contract,strike,exp_date,ask,est_val,volume','from option_data where est_val != 0.0 and volume > ' + str(volume_min) + ' and ask < ' + str(ask_max) + ' and exp_date > "' + min_exp.strftime('%Y-%m-%d') + '" and rec_date = "' + rec_date.strftime('%Y-%m-%d') + '";')
+    r = get_interest_rate(rec_date)
+    def compute_ret(x):
+        days = (x['exp_date'] - rec_date).days
+        try:
+            if x['ask'] > 0:
+                return round(float(x['est_val']/x['ask'])**(365.0/days) - 1 - ((1+r)**(days/30.0) - 1), 2)
+            else:
+                return 0
+        except:
+            return 0
+
+    df_options['ret'] = df_options.apply(lambda x: compute_ret(x), axis=1)
+    df_options = df_options[(df_options['ret'] > 0) & (df_options['ret'] < ret_max)]
+    
+    df_pareto = df_options.copy()
+    df_pareto = df_pareto[0:0]
+    for i in range(len(df_options.index)):
+        df_dominating = df_options[(df_options['volume'] > df_options['volume'].iloc[i]) & (df_options['ret'] > df_options['ret'].iloc[i])]
+        if len(df_dominating.index) == 0:
+            df_pareto = df_pareto.append(df_options.iloc[i])
+    df_pareto = df_pareto.sort_values('volume')
+
+    return [df_pareto, df_options]
 
