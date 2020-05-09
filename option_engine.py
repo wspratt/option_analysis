@@ -41,4 +41,21 @@ for i in range(len(df_symbols)):
     else:
         tprint('[ODL] [' + str(i + 1) + '/' + str(len(df_symbols)) + '] [' + df_symbols[i] + '] [NULL]')
 
+tprint('proceeding to options valuation')
+
+df_options = db_utils.get_unvalued_options()
+
+tprint(str(len(df_options)) + ' symbol-date pairs queued up to value.')
+
+for i in range(len(df_options)):
+    try:
+        df_contracts = option_calcs.bulk_eval_options(df_options['symbol'].iloc[i], df_options['rec_date'].iloc[i])
+        db_utils.insert_valued_options(df_contracts, df_options['rec_date'].iloc[i])
+        num_results = len(df_contracts.index)
+    except:
+        num_results = 0
+    tprint('[' + str(i+1) + '/' + str(len(df_options)) + '] [' + df_options['symbol'].iloc[i] + '] [' + df_options['rec_date'].iloc[i].strftime('%Y-%m-%d') + '] [' + str(num_results) + ']')
+
+tprint('daily script complete.')
+
 
