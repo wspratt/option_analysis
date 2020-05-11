@@ -270,8 +270,14 @@ def get_volatility(symbol, rec_date):
         return cur.fetchone()[0]
 
 def get_generic_df(columns, command_tail):
+    
+    distinct_flag = False
 
     columns = columns.split(',')
+    for i in range(len(columns)):
+        if 'distinct' in columns[i]:
+            distinct_flag = True
+            columns[i] = columns[i].strip().split()[1]
 
     column_map = {}
 
@@ -279,8 +285,11 @@ def get_generic_df(columns, command_tail):
         column_map[c] = []
 
     [conn, cur] = get_connection()
-
-    cmd = 'select ' + ','.join(columns) + ' ' + command_tail
+   
+    if distinct_flag is True:
+        cmd = 'select distinct ' + ','.join(columns) + ' ' + command_tail
+    else:
+        cmd = 'select ' + ','.join(columns) + ' ' + command_tail
     cur.execute(cmd)
 
     for row in cur:
