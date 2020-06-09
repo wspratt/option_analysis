@@ -299,3 +299,18 @@ def get_generic_df(columns, command_tail):
     conn.close()
 
     return pd.DataFrame(column_map)
+
+def drop_old_unvalued_options(days=5):
+
+    [conn, cur] = get_connection()
+
+    cur.execute('select distinct rec_date from option_data order by rec_date desc limit ' + str(days) + ',1;')
+    purge_date = cur.fetchone()
+
+    cmd = 'delete from option_data where rec_date <= "' + purge_date.strftime('%Y-%m-%d') + '" and est_val is null;'
+    qty = cur.execute(cmd)
+    conn.commit()
+
+    conn.close()
+
+    return qty

@@ -63,6 +63,12 @@ for i in range(len(df_options)):
         num_results = 0
     tprint('[OVAL] [' + str(i+1) + '/' + str(len(df_options)) + '] [' + df_options['symbol'].iloc[i] + '] [' + df_options['rec_date'].iloc[i].strftime('%Y-%m-%d') + '] [' + str(num_results) + ']')
 
+tprint('purging old unvalued options from database')
+
+qty = db_utils.drop_old_unvalued_options()
+
+tprint(str(qty) + ' contracts dropped')
+
 tprint('daily script complete.')
 
 
