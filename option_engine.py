@@ -1,4 +1,5 @@
 import web_scraper
+import option_calcs
 import db_utils
 import datetime
 import sys
@@ -8,12 +9,17 @@ def tprint(msg):
     sys.stdout.flush()
 
 restart = False
+eval_flag = False
+
+df_symbols = None
 
 if len(sys.argv) == 2:
     if sys.argv[1] == 'restart':
         restart = True
+    elif sys.argv[1] == 'eval':
+        eval_flag = True
 
-if restart is False:
+if restart is False and eval_flag is False:
 
     rec_date = datetime.datetime.today().date()
 
@@ -33,13 +39,14 @@ elif restart is True:
     [rec_date, df_symbols] = db_utils.get_option_restart_point()
     tprint('restarting option download at symbol ' + df_symbols[0])
 
-for i in range(len(df_symbols)):
-    df_options = web_scraper.scrape_options(df_symbols[i], rec_date)    
-    if df_options is not None:
-        db_utils.insert_options(df_options, rec_date)
-        tprint('[ODL] [' + str(i + 1) + '/' + str(len(df_symbols)) + '] [' + df_symbols[i] + '] [' + str(len(df_options.index)) + ']')
-    else:
-        tprint('[ODL] [' + str(i + 1) + '/' + str(len(df_symbols)) + '] [' + df_symbols[i] + '] [NULL]')
+if df_symbols is not None:
+    for i in range(len(df_symbols)):
+        df_options = web_scraper.scrape_options(df_symbols[i], rec_date)    
+        if df_options is not None:
+            db_utils.insert_options(df_options, rec_date)
+            tprint('[ODL] [' + str(i + 1) + '/' + str(len(df_symbols)) + '] [' + df_symbols[i] + '] [' + str(len(df_options.index)) + ']')
+        else:
+            tprint('[ODL] [' + str(i + 1) + '/' + str(len(df_symbols)) + '] [' + df_symbols[i] + '] [NULL]')
 
 tprint('proceeding to options valuation')
 
@@ -54,7 +61,7 @@ for i in range(len(df_options)):
         num_results = len(df_contracts.index)
     except:
         num_results = 0
-    tprint('[' + str(i+1) + '/' + str(len(df_options)) + '] [' + df_options['symbol'].iloc[i] + '] [' + df_options['rec_date'].iloc[i].strftime('%Y-%m-%d') + '] [' + str(num_results) + ']')
+    tprint('[OVAL] [' + str(i+1) + '/' + str(len(df_options)) + '] [' + df_options['symbol'].iloc[i] + '] [' + df_options['rec_date'].iloc[i].strftime('%Y-%m-%d') + '] [' + str(num_results) + ']')
 
 tprint('daily script complete.')
 
