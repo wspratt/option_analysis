@@ -55,7 +55,10 @@ def insert_options(df_options, rec_date):
 
         cmd = 'insert into option_data values ("' + contract + '","' + rec_date + '","' + symbol + '",'
         cmd = cmd + type_ + ',' + strike + ',"' + exp_date + '",' + bid + ',' + ask + ',' + volume + ',NULL);'
-        cur.execute(cmd)
+        try:
+            cur.execute(cmd)
+        except:
+            print(cmd)
 
     conn.commit()
     conn.close()
